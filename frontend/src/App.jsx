@@ -145,39 +145,6 @@ function App() {
       {/* APP CONTENT */}
       {route !== 'login' && user && (
         <div className="content-layout">
-          <aside className="sidebar">
-            <div className="sidebar-card">
-              <span className="sidebar-label">Tài khoản</span>
-              <strong>{user.fullName || user.username}</strong>
-              <p>{isAdmin ? 'Quản trị viên' : 'Khách hàng'}</p>
-            </div>
-
-            <nav className="sidebar-nav">
-              <button
-                className={route === 'products' ? 'active' : ''}
-                type="button"
-                onClick={() => go('products')}
-              >
-                Sản phẩm
-              </button>
-              {isAdmin && (
-                <button
-                  className={route === 'admin' ? 'active' : ''}
-                  type="button"
-                  onClick={() => go('admin')}
-                >
-                  Quản trị
-                </button>
-              )}
-            </nav>
-
-            <div className="sidebar-footer">
-              <button className="secondary" type="button" onClick={logout}>
-                Đăng xuất
-              </button>
-            </div>
-          </aside>
-
           <section className="content-area">
             {route === 'products' && <ProductList request={request} />}
 
@@ -485,7 +452,7 @@ function ProductCard({ product, onDetail }) {
         <p className="price">{money(product.price)}</p>
         <p>Còn: {product.quantity}</p>
         <p>{product.description}</p>
-        <button type="button" onClick={() => onDetails(product.id)}>Chi tiết</button>
+        <button type="button" onClick={() => onDetail(product.id)}>Chi tiết</button>
       </div>
     </article>
   )
