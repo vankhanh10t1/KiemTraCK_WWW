@@ -67,7 +67,7 @@ function App() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
+      body: body.toString(),
     })
 
     if (!res.ok) throw new Error('Sai tài khoản hoặc mật khẩu')
@@ -105,16 +105,24 @@ function App() {
             type="button"
             onClick={() => go(isAdmin ? 'admin' : 'products')}
           >
-            Huy Store
+            Điện máy KhanhTV  
           </button>
 
           <nav>
-            <button type="button" onClick={() => go('products')}>
+            <button
+              className={`secondary ${route === 'products' ? 'active' : ''}`}
+              type="button"
+              onClick={() => go('products')}
+            >
               Sản phẩm
             </button>
 
             {isAdmin && (
-              <button type="button" onClick={() => go('admin')}>
+              <button
+                className={`secondary ${route === 'admin' ? 'active' : ''}`}
+                type="button"
+                onClick={() => go('admin')}
+              >
                 Quản trị
               </button>
             )}
@@ -122,7 +130,7 @@ function App() {
 
           <div className="account">
             <span>{user.fullName || user.username}</span>
-            <button type="button" onClick={logout}>
+            <button className="secondary" type="button" onClick={logout}>
               Logout
             </button>
           </div>
@@ -134,28 +142,63 @@ function App() {
       {/* LOGIN (FIX: chỉ 1 chỗ duy nhất) */}
       {route === 'login' && <LoginPage onLogin={login} />}
 
-      {/* PRODUCTS */}
-      {route === 'products' && user && (
-        <ProductList request={request} />
-      )}
+      {/* APP CONTENT */}
+      {route !== 'login' && user && (
+        <div className="content-layout">
+          <aside className="sidebar">
+            <div className="sidebar-card">
+              <span className="sidebar-label">Tài khoản</span>
+              <strong>{user.fullName || user.username}</strong>
+              <p>{isAdmin ? 'Quản trị viên' : 'Khách hàng'}</p>
+            </div>
 
-      {/* ADMIN */}
-      {route === 'admin' && isAdmin && (
-        <AdminProductList
-          request={request}
-          go={go}
-          setMessage={setMessage}
-        />
-      )}
+            <nav className="sidebar-nav">
+              <button
+                className={route === 'products' ? 'active' : ''}
+                type="button"
+                onClick={() => go('products')}
+              >
+                Sản phẩm
+              </button>
+              {isAdmin && (
+                <button
+                  className={route === 'admin' ? 'active' : ''}
+                  type="button"
+                  onClick={() => go('admin')}
+                >
+                  Quản trị
+                </button>
+              )}
+            </nav>
 
-      {/* FORM */}
-      {route.startsWith('form') && isAdmin && (
-        <ProductForm
-          request={request}
-          go={go}
-          setMessage={setMessage}
-          productId={route.split(':')[1]}
-        />
+            <div className="sidebar-footer">
+              <button className="secondary" type="button" onClick={logout}>
+                Đăng xuất
+              </button>
+            </div>
+          </aside>
+
+          <section className="content-area">
+            {route === 'products' && <ProductList request={request} />}
+
+            {route === 'admin' && isAdmin && (
+              <AdminProductList
+                request={request}
+                go={go}
+                setMessage={setMessage}
+              />
+            )}
+
+            {route.startsWith('form') && isAdmin && (
+              <ProductForm
+                request={request}
+                go={go}
+                setMessage={setMessage}
+                productId={route.split(':')[1]}
+              />
+            )}
+          </section>
+        </div>
       )}
 
     </main>
@@ -182,7 +225,7 @@ function LoginPage({ onLogin }) {
   return (
     <section className="login-page">
       <form className="login-panel" onSubmit={submit}>
-        <h1>Huy Store</h1>
+        <h1>Điện máy KhanhTV</h1>
 
         <label>
           Tài khoản
@@ -440,9 +483,9 @@ function ProductCard({ product, onDetail }) {
         <h2>{product.name}</h2>
         <p className="category">{product.category?.name}</p>
         <p className="price">{money(product.price)}</p>
-        <p>Còn {product.quantity}</p>
+        <p>Còn: {product.quantity}</p>
         <p>{product.description}</p>
-        <button type="button" onClick={() => onDetail(product.id)}>Chi tiết</button>
+        <button type="button" onClick={() => onDetails(product.id)}>Chi tiết</button>
       </div>
     </article>
   )
