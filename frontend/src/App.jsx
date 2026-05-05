@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 const API = 'http://localhost:8080/api'
+
 const emptyProduct = {
   name: '',
   price: '',
@@ -25,20 +26,30 @@ function App() {
       headers: { 'Content-Type': 'application/json', ...options.headers },
       ...options,
     })
+
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       throw new Error(data.message || 'Có lỗi xảy ra')
     }
+
     if (res.status === 204) return null
     return res.json().catch(() => null)
   }, [])
 
+  // ✅ FIX: sync user + route rõ ràng
   const me = useCallback(async () => {
     try {
       const data = await request('/auth/me')
+
       setUser(data)
-      setRoute(data.roles.includes('ROLE_ADMIN') ? 'admin' : 'products')
+
+      if (data?.roles?.includes('ROLE_ADMIN')) {
+        setRoute('admin')
+      } else {
+        setRoute('products')
+      }
     } catch {
+      setUser(null)
       setRoute('login')
     } finally {
       setLoading(false)
@@ -46,25 +57,31 @@ function App() {
   }, [request])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     me()
   }, [me])
 
   async function login(username, password) {
     const body = new URLSearchParams({ username, password })
+
     const res = await fetch(`${API}/auth/login`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     })
+
     if (!res.ok) throw new Error('Sai tài khoản hoặc mật khẩu')
+
     await me()
     setMessage('Đăng nhập thành công')
   }
 
   async function logout() {
-    await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
+    await fetch(`${API}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+
     setUser(null)
     setRoute('login')
     setMessage('Đã đăng xuất')
@@ -79,37 +96,73 @@ function App() {
 
   return (
     <main className="app-shell">
+
+      {/* HEADER */}
       {user && (
         <header className="topbar">
-          <button className="brand" type="button" onClick={() => go(isAdmin ? 'admin' : 'products')}>
+          <button
+            className="brand"
+            type="button"
+            onClick={() => go(isAdmin ? 'admin' : 'products')}
+          >
             Huy Store
           </button>
+
           <nav>
-            <button type="button" onClick={() => go('products')}>Sản phẩm</button>
-            {isAdmin && <button type="button" onClick={() => go('admin')}>Quản trị</button>}
+            <button type="button" onClick={() => go('products')}>
+              Sản phẩm
+            </button>
+
+            {isAdmin && (
+              <button type="button" onClick={() => go('admin')}>
+                Quản trị
+              </button>
+            )}
           </nav>
+
           <div className="account">
             <span>{user.fullName || user.username}</span>
-            <button type="button" onClick={logout}>Logout</button>
+            <button type="button" onClick={logout}>
+              Logout
+            </button>
           </div>
         </header>
       )}
 
       {message && <div className="toast">{message}</div>}
 
+      {/* LOGIN (FIX: chỉ 1 chỗ duy nhất) */}
       {route === 'login' && <LoginPage onLogin={login} />}
-      {route === 'products' && user && <ProductList request={request} />}
+
+      {/* PRODUCTS */}
+      {route === 'products' && user && (
+        <ProductList request={request} />
+      )}
+
+      {/* ADMIN */}
       {route === 'admin' && isAdmin && (
-        <AdminProductList request={request} go={go} setMessage={setMessage} />
+        <AdminProductList
+          request={request}
+          go={go}
+          setMessage={setMessage}
+        />
       )}
+
+      {/* FORM */}
       {route.startsWith('form') && isAdmin && (
-        <ProductForm request={request} go={go} setMessage={setMessage} productId={route.split(':')[1]} />
+        <ProductForm
+          request={request}
+          go={go}
+          setMessage={setMessage}
+          productId={route.split(':')[1]}
+        />
       )}
-      {!user && route !== 'login' && <LoginPage onLogin={login} />}
+
     </main>
   )
 }
 
+/* ---------------- LOGIN ---------------- */
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('123456')
@@ -118,6 +171,7 @@ function LoginPage({ onLogin }) {
   async function submit(e) {
     e.preventDefault()
     setError('')
+
     try {
       await onLogin(username, password)
     } catch (err) {
@@ -129,21 +183,29 @@ function LoginPage({ onLogin }) {
     <section className="login-page">
       <form className="login-panel" onSubmit={submit}>
         <h1>Huy Store</h1>
+
         <label>
           Tài khoản
           <input value={username} onChange={(e) => setUsername(e.target.value)} />
         </label>
+
         <label>
           Mật khẩu
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
+
         {error && <p className="error">{error}</p>}
-        <button className="primary" type="submit">Đăng nhập</button>
+
+        <button className="primary" type="submit">
+          Đăng nhập
+        </button>
+
         <p className="hint">admin / 123456 hoặc user / 123456</p>
       </form>
     </section>
   )
 }
+
 
 function ProductList({ request }) {
   const [products, setProducts] = useState([])
@@ -267,6 +329,7 @@ function ProductForm({ request, go, setMessage, productId }) {
   const [product, setProduct] = useState(emptyProduct)
   const [categories, setCategories] = useState([])
   const [error, setError] = useState('')
+  const [uploading, setUploading] = useState(false)
   const isEdit = Boolean(productId)
 
   useEffect(() => {
@@ -285,6 +348,28 @@ function ProductForm({ request, go, setMessage, productId }) {
 
   function change(field, value) {
     setProduct((current) => ({ ...current, [field]: value }))
+  }
+
+  async function uploadImage(file) {
+    if (!file) return
+    setUploading(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      if (!res.ok) throw new Error('Upload anh that bai')
+      const data = await res.json()
+      change('imageUrl', data.url)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function submit(e) {
@@ -326,7 +411,10 @@ function ProductForm({ request, go, setMessage, productId }) {
             ))}
           </select>
         </label>
-        <label>Ảnh<input value={product.imageUrl} onChange={(e) => change('imageUrl', e.target.value)} /></label>
+        <label>Link ảnh<input value={product.imageUrl} onChange={(e) => change('imageUrl', e.target.value)} /></label>
+        <label>Chọn ảnh từ máy<input type="file" accept="image/*" onChange={(e) => uploadImage(e.target.files[0])} /></label>
+        {uploading && <p className="hint wide">Đang upload ảnh...</p>}
+        {product.imageUrl && <img className="form-preview wide" src={product.imageUrl} alt="Xem trước sản phẩm" />}
         <label className="wide">Mô tả<textarea value={product.description} onChange={(e) => change('description', e.target.value)} /></label>
         {error && <p className="error wide">{error}</p>}
         <button className="primary wide" type="submit">Lưu</button>
